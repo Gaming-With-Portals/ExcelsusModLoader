@@ -12,6 +12,7 @@
 #include <Behavior.h>
 
 char LOG_PATH[MAX_PATH];
+char GAME_PATH[MAX_PATH];
 
 FILE* logFile = nullptr;
 
@@ -131,7 +132,8 @@ inline void __cdecl dbgPrint(const char* fmt, ...)
 	}
 }
 
-constexpr float MOD_LOADER_VERSION = 2.0f;
+constexpr float MOD_LOADER_VERSION = 2.1f;
+bool bLoadedByRMM = false;
 
 struct FileRead
 {
@@ -824,6 +826,47 @@ public:
 
 		openLog();
 
+		Events::OnApplicationStartEvent.before += []()
+			{
+				GetCurrentDirectoryA(MAX_PATH, GAME_PATH);
+				if (GetModuleHandleA("dinput8.dll"))
+				{
+					// Check if its really our asi loader
+					char buff[MAX_PATH];
+
+					sprintf(buff, "%s\\%s", GAME_PATH, "dinput8.dll");
+
+					auto file = fopen(buff, "rb");
+					fseek(file, 0, SEEK_END);
+					auto size = ftell(file);
+					fseek(file, 0, SEEK_SET);
+
+
+					void* filebuf = (void*)malloc(size);
+					fread(filebuf, 1u, size, file);
+
+					auto handle = (IMAGE_NT_HEADERS32*)((int)filebuf + 0x140);
+					
+					fclose(file);
+
+					if (handle->FileHeader.TimeDateStamp == 0x6522D87A)
+					{
+						LOG("RMM detected, cancelling the initialisation process...");
+
+						ModLoader::bInit = false;
+						ModLoader::bInitFailed = true;
+						bLoadedByRMM = true;
+					}
+
+					free(filebuf);
+
+					if (bLoadedByRMM)
+					{
+						ExitProcess(0);
+					}
+				}
+			};
+
 		/// FOR HEAP MANAGER TESTING PURPOSES
 		/*
 		for (int i = 0; i < 32; i++)
@@ -1053,7 +1096,7 @@ void gui::RenderWindow()
 	if (!ModLoader::bInit || ModLoader::bInitFailed)
 	{
 		ImGui::Begin("Mod Loader", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
-		ImGui::Text("Initialization failed.");
+		if (!bLoadedByRMM) ImGui::Text("Initialization failed."); else ImGui::Text("Mod Loader is incompatible with RMM.");
 		ImGui::End();
 		return;
 	}
@@ -1066,10 +1109,10 @@ void gui::RenderWindow()
 	{
 		if (ImGui::BeginTabItem("Mods"))
 		{
-			if (ImGui::BeginTable("##ModsTable", 4, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders))
+			ImGui::TextUnformatted("Some mods require game restart.");
+			if (ImGui::BeginTable("##ModsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders))
 			{
-				ImGui::TableSetupColumn("Enabled");
-				ImGui::TableSetupColumn("Mod Name");
+				ImGui::TableSetupColumn("Mod");
 				ImGui::TableSetupColumn("Priority");
 				ImGui::TableSetupColumn("Author");
 				ImGui::TableHeadersRow();
@@ -1087,19 +1130,8 @@ void gui::RenderWindow()
 
 
 					ImGui::TableNextColumn();
-					if (ImGui::Checkbox("##IsEnabled", &prof->m_bEnabled))
+					if (ImGui::Checkbox(modName, &prof->m_bEnabled))
 						bShouldReload = true;
-
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::SetTooltip("Some mods require game restart!");
-					}
-					
-					ImGui::TableNextColumn();
-					ImGui::TextUnformatted(modName);
-
-					if (ImGui::IsItemClicked())
-						prof->m_bEnabled ^= true;
 
 					if (ImGui::IsItemHovered())
 					{
@@ -1108,7 +1140,7 @@ void gui::RenderWindow()
 						else
 							ImGui::SetTooltip("<No description given>\n[%s]", Utils::getProperSize(prof->m_nTotalSize).c_str());
 					}
-
+					
 					ImGui::TableNextColumn();
 					ImGui::PushItemWidth(80.f);
 					if (ImGui::InputInt("##Priority", &prof->m_nPriority))

@@ -192,6 +192,9 @@ void findFiles(const char* directory, Hw::cFixedVector<ModLoader::ModProfile::Fi
 
 void ModLoader::startup()
 {
+	if (bInitFailed)
+		return;
+
 	Load();
 
 	openProfiles(getModFolder().c_str());
