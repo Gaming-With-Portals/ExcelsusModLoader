@@ -829,10 +829,12 @@ public:
 		Events::OnApplicationStartEvent.before += []()
 			{
 				GetCurrentDirectoryA(MAX_PATH, GAME_PATH);
+				LOGINFO("ExcelsusModLoader: By Gaming with Portals & Frouk");
 				if (GetModuleHandleA("dinput8.dll"))
 				{
 					// Check if its really our asi loader
-					char buff[MAX_PATH];
+					// ^ nope, this is a stupid check, idk why you felt the need to do this
+					/*char buff[MAX_PATH];
 
 					sprintf(buff, "%s\\%s", GAME_PATH, "dinput8.dll");
 
@@ -863,7 +865,8 @@ public:
 					if (bLoadedByRMM)
 					{
 						ExitProcess(0);
-					}
+					}*/
+					// go go gadget comment out frouk's rmm blocker
 				}
 			};
 
@@ -1121,21 +1124,20 @@ void gui::RenderWindow()
 					ImGui::TableNextRow();
 					ImGui::PushID(prof->m_name.c_str());
 
-					Utils::String modName;
+					std::string modName;
 
-					modName = prof->m_name;
+							
 
-					if (prof->m_ModInfo && prof->m_ModInfo->m_title)
-						modName = prof->m_ModInfo->m_title;
+					modName = prof->m_ModInfo->m_title;
 
 
 					ImGui::TableNextColumn();
-					if (ImGui::Checkbox(modName, &prof->m_bEnabled))
+					if (ImGui::Checkbox(modName.c_str(), &prof->m_bEnabled))
 						bShouldReload = true;
 
 					if (ImGui::IsItemHovered())
 					{
-						if (prof->m_ModInfo && prof->m_ModInfo->m_description)
+						if (!prof->m_ModInfo->m_description.empty())
 							ImGui::SetTooltip("%s\n%s\n[%s]", prof->m_ModInfo->m_description.c_str(), prof->m_ModInfo->m_date.c_str(), Utils::getProperSize(prof->m_nTotalSize).c_str());
 						else
 							ImGui::SetTooltip("<No description given>\n[%s]", Utils::getProperSize(prof->m_nTotalSize).c_str());
@@ -1150,14 +1152,14 @@ void gui::RenderWindow()
 
 					if (prof->m_ModInfo)
 					{
-						if (prof->m_ModInfo->m_author && prof->m_ModInfo->m_authorURL)
+						if (!prof->m_ModInfo->m_author.empty() && !prof->m_ModInfo->m_authorURL.empty())
 						{
 							ImGui::TableNextColumn();
 							ImGui::TextUnformatted(prof->m_ModInfo->m_author.c_str());
 							if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 								ShellExecuteA(NULL, "open", prof->m_ModInfo->m_authorURL.c_str(), NULL, NULL, NULL);
 						}
-						else if (prof->m_ModInfo->m_author)
+						else if (!prof->m_ModInfo->m_author.empty())
 						{
 							ImGui::TableNextColumn();
 							ImGui::TextUnformatted(prof->m_ModInfo->m_author.c_str());

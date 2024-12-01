@@ -5,7 +5,7 @@
 #include <format>
 #include <Hw.h>
 #include <functional>
-#include <ini.h>
+#include "IniReader.h";
 #pragma warning(disable : 4996)
 
 #define MAX_MODS_PROFILE 1024
@@ -410,12 +410,12 @@ namespace ModLoader
 
 		struct ModExtraInfo
 		{
-			Utils::String m_author;
-			Utils::String m_title;
-			Utils::String m_version;
-			Utils::String m_description;
-			Utils::String m_date;
-			Utils::String m_authorURL;
+			std::string m_author;
+			std::string m_title;
+			std::string m_version;
+			std::string m_description;
+			std::string m_date;
+			std::string m_authorURL;
 
 			std::vector<Utils::String>* m_pDLLs = nullptr;
 
@@ -428,7 +428,7 @@ namespace ModLoader
 			{
 				if (file->m_nSize)
 				{
-					IniReader ini(file->m_path);
+					CIniReader ini(file->m_path);
 
 					m_author = ini.ReadString("Desc", "Author", nullptr);
 					m_title = ini.ReadString("Desc", "Title", nullptr);
@@ -437,9 +437,9 @@ namespace ModLoader
 					m_date = ini.ReadString("Desc", "Date", nullptr);
 					m_authorURL = ini.ReadString("Desc", "AuthorURL", nullptr);
 
-					Utils::String dlls = ini.ReadString("Main", "DLLFile", nullptr);
+					std::string dlls = ini.ReadString("Main", "DLLFile", nullptr);
 
-					if (dlls && dlls.length() > 1)
+					if (dlls.length() > 1)
 					{
 						m_pDLLs = new std::vector<Utils::String>();
 
@@ -495,13 +495,14 @@ namespace ModLoader
 		}
 
 		// Finds file by the end of the filename(like: pl\\pl0010.dat -> pathToGame\\mods\\ModName\\pl\\pl0010.dat)
-		File* FindFile(const char* filename)
+		ModLoader::ModProfile::File* FindFile(const char* filename)
 		{
 			if (!filename || filename[0] == '\0' || !strcmp(filename, ""))
 				return nullptr;
 
-			for (auto& file : m_files)
+			for (ModLoader::ModProfile::File* file : m_files)
 			{
+				
 				if (!strcmp(&file->m_path[strlen(file->m_path) - strlen(filename)], Utils::formatPath(filename)) && strlen(strrchr(file->m_path, '\\') + 1) == strlen(strrchr(filename, '\\') ? strrchr(filename, '\\') + 1 : filename)
 					&& (strrchr(file->m_path, '\\') + 1)[0] != '.' && (strrchr(file->m_path, '\\') + 1)[1] != '.') // Skip the files with dots at the start
 					return file;

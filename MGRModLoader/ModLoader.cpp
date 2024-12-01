@@ -4,7 +4,7 @@
 #include "injector/injector.hpp"
 #include <shared.h>
 #include <common.h>
-#include <ini.h>
+#include "IniReader.h"
 
 extern BOOL FileExists(const char* filename);
 
@@ -237,13 +237,14 @@ FILE *profileFile = nullptr;
 
 void ModLoader::Load()
 {
-	IniReader ini("MGRModLoaderSettings.ini");
+	CIniReader ini("MGRModLoaderSettings.ini");
 
-	bIgnoreScripts = ini.ReadBool("ModLoader", "IgnoreScripts", false);
-	bIgnoreDATLoad = ini.ReadBool("ModLoader", "IgnoreFiles", false);
-	bEnableLogging = ini.ReadBool("ModLoader", "EnableLogging", true);
-	aKeys[0] = ini.ReadInt("ModLoader", "MainKeyGUI", 0x72);
-	aKeys[1] = ini.ReadInt("ModLoader", "AdditionalKeyGUI", 0);
+
+	bIgnoreScripts = ini.ReadBoolean("ModLoader", "IgnoreScripts", false);
+	bIgnoreDATLoad = ini.ReadBoolean("ModLoader", "IgnoreFiles", false);
+	bEnableLogging = ini.ReadBoolean("ModLoader", "EnableLogging", true);
+	aKeys[0] = ini.ReadInteger("ModLoader", "MainKeyGUI", 0x72);
+	aKeys[1] = ini.ReadInteger("ModLoader", "AdditionalKeyGUI", 0);
 
 	for (auto& profile : Profiles)
 		profile->Load(profile->m_name);
@@ -253,13 +254,13 @@ void ModLoader::Save()
 {
 	remove((getModFolder() + "\\profiles.ini").c_str());
 	profileFile = fopen((getModFolder() + "\\profiles.ini").c_str(), "a");
-	IniReader ini("MGRModLoaderSettings.ini");
+	CIniReader ini("MGRModLoaderSettings.ini");
 
-	ini.WriteBool("ModLoader", "IgnoreScripts", bIgnoreScripts);
-	ini.WriteBool("ModLoader", "IgnoreFiles", bIgnoreDATLoad);
-	ini.WriteBool("ModLoader", "EnableLogging", bEnableLogging);
-	ini.WriteInt("ModLoader", "MainKeyGUI", aKeys[0]);
-	ini.WriteInt("ModLoader", "AdditionalKeyGUI", aKeys[1]);
+	ini.WriteBoolean("ModLoader", "IgnoreScripts", bIgnoreScripts);
+	ini.WriteBoolean("ModLoader", "IgnoreFiles", bIgnoreDATLoad);
+	ini.WriteBoolean("ModLoader", "EnableLogging", bEnableLogging);
+	ini.WriteInteger("ModLoader", "MainKeyGUI", aKeys[0]);
+	ini.WriteInteger("ModLoader", "AdditionalKeyGUI", aKeys[1]);
 
 	for (auto& profile : Profiles)
 		profile->Save();
@@ -282,22 +283,21 @@ bool ModLoader::IsGUIKeyPressed()
 
 Utils::String ModLoader::getModFolder()
 {
-	auto res = Utils::String(path) + "\\mods\\";
+	Utils::String res = "ExcelsusModLoader\\";
 	return res;
 }
 
 void ModLoader::ModProfile::Load(const char* name)
 {
-	IniReader prof(getModFolder() + "\\profiles.ini");
-	
-	this->m_bEnabled = prof.ReadBool(name, "Enabled", true);
-	this->m_nPriority = prof.ReadInt(name, "Priority", -1);
+
+
 }
 
 void ModLoader::ModProfile::Startup()
 {
 	if (!m_bStarted)
 	{
+		LOGINFO("Starting up profile...");
 		if (!m_files.m_pBegin)
 		{
 			m_files.m_pBegin = (File**)malloc(sizeof(File*) * 1024);
@@ -314,17 +314,14 @@ void ModLoader::ModProfile::Startup()
 		}
 
 		ReadFiles();
-
-		if (auto file = FindFile("mod.ini"); file)
+		auto config_file = FindFile("mod.ini");
+		if (config_file != nullptr)
 		{
-			m_ModInfo = new ModExtraInfo();
-
-			if (m_ModInfo)
-				m_ModInfo->load(file);
+			LOGINFO("Loading config");
 		}
 
 		auto newArray = (File**)malloc(sizeof(File*) * m_files.m_nSize);
-
+		
 		if (newArray)
 		{
 			for (int i = 0; i < m_files.m_nSize; i++)
@@ -376,10 +373,7 @@ void ModLoader::ModProfile::Save()
 		return;
 
 	LOGINFO("Saving %s...", this->m_name.c_str());
-	IniReader prof(getModFolder() + "\\profiles.ini");
 
-	prof.WriteBool(this->m_name, "Enabled", this->m_bEnabled);
-	prof.WriteInt(this->m_name, "Priority", this->m_nPriority);
 
 	fprintf(profileFile, "\n"); // at least not stacking up on each other
 	fflush(profileFile);

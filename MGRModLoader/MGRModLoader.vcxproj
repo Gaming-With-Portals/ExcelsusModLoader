@@ -73,6 +73,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.asi</TargetExt>
     <IncludePath>F:\MEDIA\Документы\For projects\utils\IniReader;$(IncludePath)</IncludePath>
+    <OutDir>F:\SteamLibrary\steamapps\common\METAL GEAR RISING REVENGEANCE</OutDir>
+    <TargetName>ExcelsusModLoader</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -100,7 +102,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(MGR_PLUGIN_SDK)shared;$(MGR_PLUGIN_SDK)game\Havok;$(MGR_PLUGIN_SDK)game;$(DXSDK_DIR)lib\x86;$(DXSDK_DIR)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(DXSDK_DIR)lib\x86;$(DXSDK_DIR)Include;F:\Dev\mgr-plugin-sdk-main\game;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>MinSpace</Optimization>
     </ClCompile>
@@ -111,9 +113,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "E:\GAMES\Metal Gear Rising - Revengeance"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -163,6 +162,7 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="include\MinHook.h" />
+    <ClInclude Include="ini.h" />
     <ClInclude Include="ModLoader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="src\buffer.h" />
