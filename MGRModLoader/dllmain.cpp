@@ -10,10 +10,16 @@
 #include <ctime>
 #include <lib.h>
 #include <Behavior.h>
-
+#include <d3dx9.h>
+#include <filesystem>
+#include <map>
+#include <string>
+#include <algorithm> 
+using namespace std;
+namespace fs = std::filesystem;
 char LOG_PATH[MAX_PATH];
 char GAME_PATH[MAX_PATH];
-
+bool ui_data_loaded = false;
 FILE* logFile = nullptr;
 
 #define criFsBinder_create(binderPtr) ((int(__cdecl *)(int*))(shared::base + 0xE971BB))(binderPtr)
@@ -23,6 +29,161 @@ FILE* logFile = nullptr;
 
 typedef unsigned int CriUint32;
 typedef signed int CriSint32;
+
+std::string FormatString(const std::string& input) {
+	std::string formatted = input;
+
+	// Convert to lowercase
+	std::transform(formatted.begin(), formatted.end(), formatted.begin(), ::tolower);
+
+	// Replace spaces with underscores
+	std::replace(formatted.begin(), formatted.end(), ' ', '_');
+
+	return formatted;
+}
+
+class MGRFontCharacter {
+public:
+	char character;
+	LPDIRECT3DTEXTURE9 sprite;
+	int width;
+
+};
+
+std::map<char, MGRFontCharacter> font_map[2];
+LPD3DXSPRITE pSprite = NULL;
+#define C_BLACK D3DCOLOR_XRGB(0, 0, 0)
+#define C_LTGRAY D3DCOLOR_XRGB(240, 255, 255)
+#define C_LTGRAYFADE D3DCOLOR_ARGB(100, 240, 255, 255)
+#define C_CYAN D3DCOLOR_XRGB(0, 255, 255)
+#define C_DKGRAY D3DCOLOR_XRGB(30, 30, 30)
+#define C_HPYELLOW D3DCOLOR_XRGB(255, 227, 66)
+
+void LoadFont(fs::path directory_path, int id) {
+	LPDIRECT3DTEXTURE9 pTexture = NULL;
+	int loaded_font_textures = 0;
+	for (const auto& entry : fs::directory_iterator(directory_path)) {
+		if (entry.is_regular_file()) {
+
+			pTexture = NULL;
+			string fname = entry.path().string();
+			D3DXIMAGE_INFO info;
+			D3DXCreateTextureFromFileEx(
+				Hw::GraphicDevice,
+				fname.c_str(),
+				D3DX_DEFAULT_NONPOW2,    // Width
+				D3DX_DEFAULT_NONPOW2,    // Height
+				D3DX_DEFAULT,            // MipLevels
+				0,                       // Usage
+				D3DFMT_UNKNOWN,          // Format
+				D3DPOOL_MANAGED,         // Pool
+				D3DX_FILTER_NONE,        // Filter
+				D3DX_FILTER_NONE,        // MipFilter
+				0,                       // ColorKey
+				NULL,                    // pSrcInfo
+				NULL,                    // pPalette
+				&pTexture
+			);
+
+			D3DXGetImageInfoFromFile(fname.c_str(), &info);
+			if (pTexture != NULL) {
+				int n = fname.length();
+				char* arr = new char[n + 1];
+				fname = fname.substr(fname.find_last_of("\\"), fname.find_last_of("."));
+				strcpy_s(arr, n + 1, fname.c_str());
+				MGRFontCharacter character;
+				character.sprite = pTexture;
+				character.character = arr[1];
+				character.width = info.Width;
+				font_map[id].insert({ arr[1], character });
+				loaded_font_textures++;
+			}
+		}
+	}
+}
+
+std::string GetExeDirectory() {
+	char path[MAX_PATH];
+	// Get the full path of the executable that started the process
+	GetModuleFileName(NULL, path, MAX_PATH);
+
+	// Convert to a std::string for easier manipulation
+	std::string exePath(path);
+
+	// Find the last backslash to get the directory
+	size_t pos = exePath.find_last_of("\\/");
+	if (pos != std::string::npos) {
+		return exePath.substr(0, pos);
+	}
+	return "";
+}
+
+void LoadUIData() {
+	
+	LoadFont(GetExeDirectory() + "\\GameData\\ui\\eml\\ui_eml_core", 0);
+	LOGINFO("Loading user interface data (DirectX 9) from %s", GetExeDirectory() + "\\GameData\\ui\\eml\\");
+
+	ui_data_loaded = true;
+
+}
+
+void RenderTextMGR(string text, float x, float y, D3DCOLOR color, int fontid = 0) {
+	// Copy string to a cstring array and then draw using the map, which allows for infinite expansion, just add the character to the mgfonts folder
+
+	int n = text.length();
+	char* txtarray = new char[n + 1];
+	strcpy_s(txtarray, n + 1, text.c_str());
+
+	pSprite->Begin(D3DXSPRITE_ALPHABLEND); // ERROR CAUSING CODE
+	int tmp_x_shift = 0;
+	
+	for (int i = 0; i < n + 1; i++) {
+		D3DXVECTOR3 position(x + tmp_x_shift, y, 0.0f);
+		if (txtarray[i] != NULL) {
+
+			pSprite->Draw(font_map[fontid][txtarray[i]].sprite, NULL, NULL, &position, color);
+			tmp_x_shift += font_map[fontid][txtarray[i]].width - 8;
+
+
+		}
+		else {
+			tmp_x_shift += 20;
+		}
+
+	}
+
+	pSprite->End();
+
+	delete[] txtarray;
+
+}
+
+void RenderTextWithShadow(string text, float x, float y, D3DCOLOR bg = C_BLACK, D3DCOLOR fg = C_LTGRAY, int fontid = 0) {
+	static int offsets[9][2] = {
+	{-1, -1},
+	{-1, 0},
+	{-1, 1},
+	{0, -1},
+	//{0, 0},
+	{0, 1},
+	{1, -1},
+	{1, 0},
+	{1, 1},
+	};
+
+	for (int i = 0; i < 8; i++) {
+
+		RenderTextMGR(text, x + offsets[i][0], y + offsets[i][1], bg, fontid);
+		
+
+
+
+	}
+	RenderTextMGR(text, x, y, fg, fontid);
+
+
+
+}
 
 struct CriFsConfig
 {
@@ -321,8 +482,12 @@ size_t __cdecl hkGetFilesize(const char* file) // PgIOHookDefferedCRI also uses 
 	return size;
 }
 
+
+
+
 int __fastcall hkLoad(FileRead::Work* ecx)
 {
+
 	if (ModLoader::bInit && !ModLoader::bIgnoreDATLoad && !(ecx->m_nFileFlags & 0x10000)) 
 	{
 		// Please fix the platinum fuck up in path
@@ -379,7 +544,7 @@ int __fastcall hkLoad(FileRead::Work* ecx)
 				ecx->m_Placeholder = nullptr;
 
 				ecx->m_Placeholder = ecx->m_pAllocator->AllocateMemory(fSize, 4096u, ((ecx->m_nFileFlags & 0x20) != 0) + 1, 0); // and allocate it again but with different size
-
+				
 				if (!ecx->m_Placeholder)
 				{
 					LOGERROR("[FILEREAD] Failed to allocate memory for %s(%s)!", file->m_path, Utils::getProperSize(fSize).c_str());
@@ -389,14 +554,14 @@ int __fastcall hkLoad(FileRead::Work* ecx)
 					ecx->m_nWaitAmount = 0;
 					return 1;
 				}
-
+				
 				if (fileSize == fSize)
 					ecx->m_nFileFlags |= 0x4000;
 
 				ecx->m_nFilesize = fSize;
 
-				file->read(ecx->m_Placeholder);
-
+				file->read(ecx->m_Placeholder); // GWP: (12/1/24, 5:31PM) this line is causing crashes
+				
 				ecx->m_nFileFlags |= 0x8000; // was modified by 
 
 				ecx->m_nWorkerState = 6;
@@ -957,6 +1122,39 @@ public:
 				closeLog();
 			};
 
+
+		Events::OnPresent += [&]() {
+			if (ui_data_loaded) {
+
+				int mod_count = 0;
+				for (auto& prof : ModLoader::Profiles) {
+					mod_count++;
+					std::string mod_name = prof->m_name.c_str();
+					if (prof->m_bIsRMMMod) {
+						RenderTextWithShadow("-_" + FormatString(mod_name), 40, 40 + 20 * mod_count, C_BLACK, D3DCOLOR_RGBA(255, 0, 0, 255));
+					}
+					else {
+						RenderTextWithShadow("-_" + FormatString(mod_name), 40, 40 + 20 * mod_count, C_BLACK, C_CYAN);
+					}
+					
+				}
+
+				RenderTextWithShadow("excelsus_mod_loader", 20, 20);
+
+				RenderTextWithShadow(to_string(mod_count) + "_mods_installed", 20, 40);
+				
+
+			}
+			else {
+				LoadUIData();
+				if (pSprite == NULL) {
+					D3DXCreateSprite(Hw::GraphicDevice, &pSprite);
+				}
+			}
+			
+		};
+
+
 		for (auto& prof : ModLoader::Profiles)
 		{
 			prof->FileWalk([&](ModLoader::ModProfile::File* file)
@@ -1059,9 +1257,16 @@ const char* formatFloatPrecision(char* buff)
 	return buff;
 }
 
+
+
+
 void gui::RenderWindow()
 {
-	if (!bUserNoticed && bUpdateAvailable)
+
+
+
+
+	/*if (!bUserNoticed && bUpdateAvailable)
 		ImGui::OpenPopup("Update checker");
 	if (ImGui::BeginPopupModal("Update checker", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
 	{
@@ -1252,5 +1457,5 @@ void gui::RenderWindow()
 		}
 		ImGui::EndTabBar();
 	}
-	ImGui::End();
+	ImGui::End();*/
 }

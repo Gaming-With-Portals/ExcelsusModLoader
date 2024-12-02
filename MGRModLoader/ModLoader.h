@@ -19,7 +19,7 @@ extern inline void __cdecl dbgPrint(const char* fmt, ...);
 	LOG("[ERROR] " x, __VA_ARGS__)
 
 #define LOGINFO(x, ...) \
-	LOG("[INFO ] " x, __VA_ARGS__)
+	LOG("[INFO] " x, __VA_ARGS__)
 
 namespace Utils
 {
@@ -224,6 +224,8 @@ namespace Utils
 
 		return buff;
 	}
+	
+
 
 	/// <summary>
 	/// Game implementation of format path
@@ -276,6 +278,8 @@ namespace Utils
 
 namespace ModLoader
 {
+
+
 	inline char path[MAX_PATH];
 	inline bool bInitFailed = false;
 	inline bool bInit = false;
@@ -300,6 +304,7 @@ namespace ModLoader
 		int m_nPriority;
 		bool m_bEnabled;
 		bool m_bStarted;
+		bool m_bIsRMMMod;
 		Hw::cFixedVector<struct File*> m_files;
 		uint64_t m_nTotalSize;
 		ModExtraInfo *m_ModInfo;
@@ -393,11 +398,37 @@ namespace ModLoader
 			{
 				if (m_nSize)
 				{
-					auto file = fopen(m_path, "rb");
+					char path[MAX_PATH];
+					// Get the full path of the executable that started the process
+					GetModuleFileName(NULL, path, MAX_PATH);
+
+					// Convert to a std::string for easier manipulation
+					std::string exePath(path);
+
+					// Find the last backslash to get the directory
+					size_t pos = exePath.find_last_of("\\/");
+
+					char exeDirChar[MAX_PATH];
+
+					// Copy the std::string to char array
+					strcpy(exeDirChar, (exePath.substr(0, pos) + "\\").c_str());
+
+					strcat(exeDirChar, m_path);
+					
+					auto file = fopen(exeDirChar, "rb");
+					if (file == nullptr) {
+						LOGERROR("FAILED TO READ %s (File opening error)", exeDirChar);
+						return 1;
+					}
+
 
 					fseek(file, 0, SEEK_SET);
 
 					bool bReadSuccessfully = fread(datafile, 1u, m_nSize, file) <= m_nSize;
+					if (!bReadSuccessfully) {
+						LOGERROR("FAILED TO READ %s (File byte error)", exeDirChar);
+					}
+
 
 					fclose(file);
 
@@ -520,6 +551,7 @@ namespace ModLoader
 		void Startup();
 		void Restart();
 		void ReadFiles();
+		void ReadFilesRMM();
 		void Save();
 		void Load(const char* name);
 

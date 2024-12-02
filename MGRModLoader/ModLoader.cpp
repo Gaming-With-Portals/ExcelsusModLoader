@@ -137,7 +137,7 @@ inline LONGLONG GetLongFromLargeInteger(DWORD LowPart, DWORD HighPart)
 	return l.QuadPart;
 }
 
-void findFiles(const char* directory, Hw::cFixedVector<ModLoader::ModProfile::File *>& files, ModLoader::ModProfile *profile, const bool bInSubFolder = false)
+void findFiles(const char* directory, Hw::cFixedVector<ModLoader::ModProfile::File *>& files, ModLoader::ModProfile *profile, const bool bInSubFolder = false, const bool bRecursiveSearch = false)
 {
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -176,13 +176,16 @@ void findFiles(const char* directory, Hw::cFixedVector<ModLoader::ModProfile::Fi
 		}
 		else
 		{
-			if (fd.cFileName[0] != '.' && fd.cFileName[1] != '.')
-			{
-				char directoryPath[MAX_PATH];
+			if (bRecursiveSearch){
+				if (fd.cFileName[0] != '.' && fd.cFileName[1] != '.')
+				{
+					char directoryPath[MAX_PATH];
 
-				sprintf(directoryPath, "%s\\%s", directory, fd.cFileName);
-				findFiles(directoryPath, files, profile, true);
+					sprintf(directoryPath, "%s\\%s", directory, fd.cFileName);
+					findFiles(directoryPath, files, profile, true);
+				}
 			}
+
 		}
 
 	} while (FindNextFileA(hFind, &fd) != 0);
@@ -317,9 +320,24 @@ void ModLoader::ModProfile::Startup()
 		auto config_file = FindFile("mod.ini");
 		if (config_file != nullptr)
 		{
-			LOGINFO("Loading config");
+			LOGINFO("Loading RMM Mod");
+			m_bIsRMMMod = true;
+
+		}
+		else {
+			LOGINFO("Loading EML Mod");
+			m_bIsRMMMod = false;
 		}
 
+		if (m_bIsRMMMod) {
+			ReadFilesRMM();
+			
+		}
+		else {
+			ReadFiles();
+		}
+
+		
 		auto newArray = (File**)malloc(sizeof(File*) * m_files.m_nSize);
 		
 		if (newArray)
@@ -364,7 +382,103 @@ void ModLoader::ModProfile::Restart()
 
 void ModLoader::ModProfile::ReadFiles()
 {
-	findFiles(getMyPath().c_str(), m_files, this, false);
+	findFiles(getMyPath().c_str(), m_files, this, false, true);
+}
+
+void ModLoader::ModProfile::ReadFilesRMM()
+{
+	CIniReader rmm_config((getMyPath() + "\\mod.ini").c_str());
+	int include_dir_count = rmm_config.ReadInteger("Main", "IncludeDirCount", 1);
+	std::vector< std::string > include_directories;
+	for (int x = 0; x < include_dir_count; x++) {
+		std::string include_dir = rmm_config.ReadString("Main", "IncludeDir" + std::to_string(x), "data000");
+		if (include_dir == ".") {
+			struct stat sb;
+			if (stat(getMyPath() + "\\data000", &sb) == 0) {
+				include_directories.push_back("data000");
+			}
+			if (stat(getMyPath() + "\\data001", &sb) == 0) {
+				include_directories.push_back("data001");
+			}
+			if (stat(getMyPath() + "\\data003", &sb) == 0) {
+				include_directories.push_back("data003");
+			}
+			if (stat(getMyPath() + "\\data004", &sb) == 0) {
+				include_directories.push_back("data004");
+			}
+			if (stat(getMyPath() + "\\data005", &sb) == 0) {
+				include_directories.push_back("data005");
+			}
+			if (stat(getMyPath() + "\\data006", &sb) == 0) {
+				include_directories.push_back("data006");
+			}
+			if (stat(getMyPath() + "\\data104", &sb) == 0) {
+				include_directories.push_back("data104");
+			}
+			if (stat(getMyPath() + "\\data105", &sb) == 0) {
+				include_directories.push_back("data105");
+			}
+			if (stat(getMyPath() + "\\data106", &sb) == 0) {
+				include_directories.push_back("data106");
+			}
+			if (stat(getMyPath() + "\\data107", &sb) == 0) {
+				include_directories.push_back("data107");
+			}
+			if (stat(getMyPath() + "\\data108", &sb) == 0) {
+				include_directories.push_back("data108");
+			}
+			LOGINFO("[RMM SUPPORT] Added required default paths");
+		}
+		else {
+			struct stat sb;
+			
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data000", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data000");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data001", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data001");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data003", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data003");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data004", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data004");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data005", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data005");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data006", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data006");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data104", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data104");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data105", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data105");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data106", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data106");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data107", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data107");
+			}
+			if (stat(getMyPath() + "\\" + include_dir.c_str() + "\\data108", &sb) == 0) {
+				include_directories.push_back(include_dir + "\\" + "data108");
+			}
+			std::string debug_string = "[RMM SUPPORT] [INFO] Added required custom include directory (" + include_dir + ")";
+			dbgPrint(debug_string.c_str());
+		}
+
+		
+
+		
+	}
+
+	for (std::string dir : include_directories) {
+		findFiles((getMyPath() + "\\" + dir.c_str()).c_str(), m_files, this, false, true);
+		dbgPrint((getMyPath() + "\\" + dir.c_str()).c_str());
+	}
+	
 }
 
 void ModLoader::ModProfile::Save()
