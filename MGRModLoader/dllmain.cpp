@@ -15,6 +15,7 @@
 #include <map>
 #include <string>
 #include <algorithm> 
+#include <PhaseManager.h>
 using namespace std;
 namespace fs = std::filesystem;
 char LOG_PATH[MAX_PATH];
@@ -26,7 +27,7 @@ FILE* logFile = nullptr;
 #define criFsBinder_free(binderPtr) ((int(__cdecl *)(int))(shared::base + 0xE97C59))(binderPtr)
 #define criFsBinder_GetStatus(a1, status) ((int(__cdecl *)(int, int *))(shared::base + 0xE97D56))(a1, status)
 #define criFsBinder_bindCpk(binderHn, srcBinderHn, path, work, worksize, binderId) ((int(__cdecl*)(int, int, const char*, void*, CriSint32, int*))(shared::base + 0xE98448))(binderHn, srcBinderHn, path, work, worksize, binderId)
-
+std::vector<std::string> loading_log;
 typedef unsigned int CriUint32;
 typedef signed int CriSint32;
 
@@ -38,6 +39,9 @@ std::string FormatString(const std::string& input) {
 
 	// Replace spaces with underscores
 	std::replace(formatted.begin(), formatted.end(), ' ', '_');
+
+
+	std::replace(formatted.begin(), formatted.end(), '\\', '&');
 
 	return formatted;
 }
@@ -524,6 +528,9 @@ int __fastcall hkLoad(FileRead::Work* ecx)
 
 					if (fileSize == fSize)
 						LOGINFO("[FILEREAD] Loading %s(%s)...", file->m_path, Utils::getProperSize(fSize).c_str());
+
+					string path = FormatString(file->m_path);
+					loading_log.push_back(path);
 				}
 				else
 				{
@@ -1124,24 +1131,66 @@ public:
 
 
 		Events::OnPresent += [&]() {
-			if (ui_data_loaded) {
+			int loading_screen_flag = injector::ReadMemory<int>(shared::base + 0x14DA650, false);
 
-				int mod_count = 0;
-				for (auto& prof : ModLoader::Profiles) {
-					mod_count++;
-					std::string mod_name = prof->m_name.c_str();
-					if (prof->m_bIsRMMMod) {
-						RenderTextWithShadow("-_" + FormatString(mod_name), 40, 40 + 20 * mod_count, C_BLACK, D3DCOLOR_RGBA(255, 0, 0, 255));
-					}
-					else {
-						RenderTextWithShadow("-_" + FormatString(mod_name), 40, 40 + 20 * mod_count, C_BLACK, C_CYAN);
+			if (ui_data_loaded) {
+				if (loading_screen_flag == 1) {
+					int x = 0;
+					for (std::string log_item : loading_log) {
+						
+						RenderTextWithShadow("loading_-_"+log_item+"_(ok)", 20, 400 + x * 20);
+						x += 1;
 					}
 					
 				}
+				else {
+					loading_log.clear();
+				}
 
-				RenderTextWithShadow("excelsus_mod_loader", 20, 20);
 
-				RenderTextWithShadow(to_string(mod_count) + "_mods_installed", 20, 40);
+				if (PhaseManager::Instance.GetCurrentSubPhase() == 0xf01) {
+					int mod_count = 0;
+					uint_fast64_t size = 0;
+					for (auto& prof : ModLoader::Profiles) {
+						size += prof->m_nTotalSize;
+						mod_count++;
+						std::string mod_name = prof->m_name.c_str();
+						if (mod_count < 6) {
+							if (prof->m_bIsRMMMod) {
+								RenderTextWithShadow("-_" + FormatString(mod_name) + "_(rmm)", 40, 40 + 20 * mod_count, C_BLACK, D3DCOLOR_RGBA(255, 0, 0, 255));
+							}
+							else {
+								RenderTextWithShadow("-_" + FormatString(mod_name), 40, 40 + 20 * mod_count, C_BLACK, C_CYAN);
+							}
+						}
+
+
+
+					}
+					if (mod_count > 5) {
+						RenderTextWithShadow("...and_" + to_string(mod_count - 5) + "_more", 40, 40 + 20 * 4);
+					}
+					
+
+					RenderTextWithShadow("excelsus_mod_loader_v1.0", 20, 20);
+					float displayed_value = size;
+					string ticker = "b";
+
+					if (size > 1e+9) {
+						ticker = "gb";
+						displayed_value = size / 1e+9;
+					}
+					else if (size > 1e+6) {
+						ticker = "mb";
+						displayed_value = size / 1e+6;
+					}else if (size > 1000) {
+						ticker = "kb";
+						displayed_value = size / 1000;
+					}
+
+					RenderTextWithShadow(to_string(mod_count) + "_mods_installed,_totalling_" + std::format("{:.1f}", displayed_value) + ticker, 20, 40);
+				}
+
 				
 
 			}
@@ -1263,7 +1312,7 @@ const char* formatFloatPrecision(char* buff)
 void gui::RenderWindow()
 {
 
-
+}
 
 
 	/*if (!bUserNoticed && bUpdateAvailable)
@@ -1458,4 +1507,3 @@ void gui::RenderWindow()
 		ImGui::EndTabBar();
 	}
 	ImGui::End();*/
-}
