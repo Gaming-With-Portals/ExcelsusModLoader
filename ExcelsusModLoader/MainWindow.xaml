@@ -5,8 +5,38 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ExcelsusModLoader"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
+        Title="Excelsus Mod Loader" Height="500" Width="800">
+    <Window.Resources>
+        <ResourceDictionary Source="Themes/Dark.xaml"/>
+    </Window.Resources>
+    <Grid Background="#212121">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="1.5*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="20"/>
+        </Grid.RowDefinitions>
+        <local:ModInfoPane Background="#212121"
+                           Grid.Column="0"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Stretch"
+                           Grid.RowSpan="2"/>
+        <ListBox Grid.Column="1"
+                 Background="#212121"
+                 HorizontalContentAlignment="Stretch"
+                 BorderThickness="2.5,0,0,0"
+                 BorderBrush="#313131">
+            <local:ModEntry/>
+            <local:ModEntry/>
+            <local:ModEntry/>
+            <local:ModEntry/>
+            <local:ModEntry/>
+        </ListBox>
+        <TextBox Grid.Row="1"
+                 Grid.Column="1"
+                 Foreground="White"
+                 Background="#313131"/>
     </Grid>
 </Window>
