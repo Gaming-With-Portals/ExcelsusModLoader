@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelsusModLoader", "Excels
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Datless", "Datless\Datless.vcxproj", "{9186B32C-6F82-42B4-B40C-E176FB9401C1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DATLESS", "DATLESS\DATLESS.vcxproj", "{9186B32C-6F82-42B4-B40C-E176FB9401C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

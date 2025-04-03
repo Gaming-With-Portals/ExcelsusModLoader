@@ -4,6 +4,8 @@
 #include <Events.h>
 
 #include "imgui/imgui.h"
+#include "include/MinHook.h"
+#include <string>
 
 class Plugin
 {
@@ -13,6 +15,10 @@ public:
 		Events::OnDeviceReset.before += gui::OnReset::Before;
 		Events::OnDeviceReset.after += gui::OnReset::After;
 		Events::OnEndScene += gui::OnEndScene; 
+		Events::OnGameStartupEvent += [] {
+
+
+		};
 		/* // Or if you want to switch it to Present
 		Events::OnPresent += gui::OnEndScene;
 		*/
